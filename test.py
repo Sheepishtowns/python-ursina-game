@@ -1,21 +1,16 @@
 from ursina import *
-from perlin_noise import PerlinNoise
-from numpy import floor
-
-#VARIABLES
-chunkSize = 16
-freq = 24
-amp = 5
+import worldgen
 
 app = Ursina(borderless=False)
-noise = PerlinNoise(octaves=2, seed=100)
 
-
-for i in range(chunkSize**2):
-    block = Entity(model = "model/block.obj", texture = "texture/grass.png", rotation = (-90,0,0), collider="box")
-    block.x = floor(i/chunkSize*2)
-    block.z = floor(i%chunkSize*2)
-    block.y = floor(noise([block.x/freq, block.z/freq]) * amp)
+chunk = worldgen.generate_chunk()
+unseenblocks = worldgen.getunseenblocks(chunk)
+for block_ in chunk:
+    if not block_ in unseenblocks:
+        block = Entity(model = "model/block.obj", texture = "texture/grass.png", rotation = (-90,0,0), collider="box")
+        block.x = block_[0]
+        block.z = block_[2]
+        block.y = block_[1]
 
 
 class Player(Entity):
