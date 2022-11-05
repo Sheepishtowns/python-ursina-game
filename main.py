@@ -4,15 +4,18 @@ import worldgen
 app = Ursina(borderless=False)
 
 chunk = worldgen.generate_chunk()
-unseenblocks = worldgen.getunseenblocks(chunk)
+
 for block_ in chunk:
-    if not block_ in unseenblocks:
-        block = Entity(model = "model/block.obj", texture = "texture/grass.png", rotation = (-90,0,0), collider="box")
+    if worldgen.ifblockcanbeseen(block_, chunk):
+        if block_[3] == 1:
+            block = Entity(model = "model/block.obj", texture = "texture/plain_dirt.png", rotation = (-90,0,0), collider="box")
+        elif block_[3] == 0:
+            block = Entity(model = "model/block.obj", texture = "texture/grass.png", rotation = (-90,0,0), collider="box")
+            
         block.x = block_[0]
         block.z = block_[2]
         block.y = block_[1]
-
-
+    
 class Player(Entity):
     def __init__(self):
         super().__init__()
@@ -69,6 +72,7 @@ class Player(Entity):
         if held_keys["space"]:
             if self.intersects().entities:
                 self.jump_energy = self.init_jump_energy
+
 
 ec = EditorCamera(rotation_smoothing=10, enabled=1, rotation=(30,30,0))
 player = Player()
