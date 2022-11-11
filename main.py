@@ -3,6 +3,18 @@ import worldgen
 
 app = Ursina(borderless=False)
 
+box = Entity(parent=camera.ui, model=Quad(radius=0), scale=(1.5,0.7))
+text1 = Text(text="Loading world...")
+text1.size = 0.05
+text1.color = color.blue
+text1.x = -0.12
+text1.y = 0
+
+#step three times to show the load screen
+app.step()
+app.step()
+app.step()
+
 chunk = worldgen.generate_chunk()
 
 for block_ in chunk:
@@ -11,11 +23,17 @@ for block_ in chunk:
             block = Entity(model = "model/block.obj", texture = "texture/plain_dirt.png", rotation = (-90,0,0), collider="box")
         elif block_[3] == 0:
             block = Entity(model = "model/block.obj", texture = "texture/grass.png", rotation = (-90,0,0), collider="box")
+        elif block_[3] == 2:
+            block = Entity(model = "model/block.obj", texture = "texture/stone.png", rotation = (-90,0,0), collider="box")
             
         block.x = block_[0]
         block.z = block_[2]
         block.y = block_[1]
-    
+
+#get rid of load screen after world has initially loaded
+destroy(box)
+destroy(text1)
+
 class Player(Entity):
     def __init__(self):
         super().__init__()
@@ -76,6 +94,5 @@ class Player(Entity):
 
 ec = EditorCamera(rotation_smoothing=10, enabled=1, rotation=(30,30,0))
 player = Player()
-
 
 app.run()
