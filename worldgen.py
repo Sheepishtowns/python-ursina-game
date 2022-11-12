@@ -20,20 +20,24 @@ def generate_chunk():
     dirtblocks = []
     for topblock in topblocks:
         thickness = randint(3,5)
-        block = topblock[0]
+        x = topblock[0]
         z = topblock[2]
         for i in range(1, thickness+1):
-            dirtblocks.append([block, topblock[1] - i*2, z, 1])
+            dirtblocks.append([x, topblock[1] - i*2, z, 1])
     #the stone layer
     stoneblocks = []
+    bottomdirtblocks = []
     for dirtblock in dirtblocks:
-        thickness = randint(5,8)
-        block = dirtblock[0]
-        z = dirtblock[2]
+        if [dirtblock[0], dirtblock[1] - 2, dirtblock[2], 1] not in dirtblocks:
+            bottomdirtblocks.append(dirtblock)
+    for bottomdirtblock in bottomdirtblocks:
+        thickness = randint(4,7)
+        x = bottomdirtblock[0]
+        z = bottomdirtblock[2]
+        
         for i in range(1, thickness+1):
-            stoneblocks.append([block, dirtblock[1] - i*2, z, 2])
+            stoneblocks.append([x, bottomdirtblock[1] - i*2, z, 2])
 
-    print("generated")
     return topblocks+dirtblocks+stoneblocks
 
 def ifblockcanbeseen(coord, blocks):
