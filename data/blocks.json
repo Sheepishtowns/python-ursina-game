@@ -1,0 +1,31 @@
+{
+    "note":"You may add custom blocks here. Make sure to put textures and models in the folders.",
+    "fullblocks":{
+        "0":{
+            "blockname":"grass",
+            "texture":"grass.png",
+            "model":"block.obj",
+            "hardness":1
+        },
+        "1":{
+            "blockname":"dirt",
+            "texture":"plain_dirt.png",
+            "model":"block.obj",
+            "hardness":1
+        },
+        "2":{
+            "blockname":"stone",
+            "texture":"stone.png",
+            "model":"block.obj",
+            "hardness":2
+        }
+    },
+    "specialblocks":{
+        "break-indicate":{
+            "blockname":"breaking",
+            "animation":"breaking",
+            "model":"breaking.obj",
+            "scale":[1.05,1.05,1.05]
+        }
+    }
+}
