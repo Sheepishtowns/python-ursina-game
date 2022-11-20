@@ -40,7 +40,7 @@ def generate_chunk():
 
     return topblocks+dirtblocks+stoneblocks
 
-def ifblockcanbeseen(coord, blocks):
+def ifblockcanbeseen(coord, blocks, refresh_around = False):
     
     y_range = (coord[1], coord[1]-2)
     is_top = True
@@ -49,12 +49,14 @@ def ifblockcanbeseen(coord, blocks):
     face_b = []
     face_c = []
     face_d = []
+    
+    if not refresh_around:
+        for block in blocks:
+            if block[1] == coord[1]+2 and block[2] == coord[2] and block[0] == coord[0]:#the block on top of the target block
+                is_top = False
+        if is_top:
+            return True
 
-    for block in blocks:
-        if block[1] == coord[1]+2 and block[2] == coord[2] and block[0] == coord[0]:#the block on top of the target block
-            is_top = False
-    if is_top:
-        return True
     for block in blocks:
         if block[0] == coord[0]+2 and block[2] == coord[2]: #check if the block is surrounded
             if block[1] >= y_range[1] and block[1] <= y_range[0] or block[1]-2 > y_range[1] and block[1]-2 < y_range[0]:
@@ -68,7 +70,18 @@ def ifblockcanbeseen(coord, blocks):
         if block[0] == coord[0] and block[2] == coord[2]-2:
             if block[1] >= y_range[1] and block[1] <= y_range[0] or block[1]-2 > y_range[1] and block[1]-2 < y_range[0]:
                 face_d.append(block)
-    
+
+        if refresh_around and block[1] == coord[1]-2 and block[2] == coord[2] and block[0] == coord[0]:#get the block on the bottom
+            face_d.append(block)
+
+    if refresh_around:
+        target_blocks = face_a + face_b + face_c + face_d
+        canbeseen = []
+        for target in target_blocks:
+            if ifblockcanbeseen(target[:3], blocks):
+                canbeseen.append(target)
+        return canbeseen
+
     face_a_y = [axis[1] for axis in face_a]
     face_b_y = [axis[1] for axis in face_b]
     face_c_y = [axis[1] for axis in face_c]
@@ -97,21 +110,6 @@ def ifblockcanbeseen(coord, blocks):
     
     return False
     
-
-"""
-def partial_refresh(chunk, visible, center, radius = 3):
-    #generate coords of blocks that gets checked
-    detection_zone = []
-    refresh_zone = []
-    corner_anchor = [center[0]-2*radius,center[1]+2*radius,center[2]-2*radius]
-    for z in range(1, (radius+1)*2):
-        layer_corner_anchor = [corner_anchor[0]+2,corner_anchor[1], corner_anchor[2]]
-        for x in range(1, (radius+1)*2):
-            for y in range(1,(radius+1)*2):
-                refresh_zone.append([x*2,y*2,z*2])
-
-    #do the checking
-"""
 def get_difference(set1, set2):
     set1_ = set1.copy()
     set2_ = set2.copy()#make copy local copy to prevent edits to global vars 
@@ -129,7 +127,3 @@ def get_difference(set1, set2):
             removes.append(item)
 
     return [removes, set2_]
-    
-    
-
-    

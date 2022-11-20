@@ -105,38 +105,42 @@ def update():
                 destroy(e)
     if "destroy" in actions:
         global chunk, visible_chunk
-        chunk = [block for block in chunk if not Vec3(block[0], block[1], block[2]) == actions["destroy"].position]#remove block from world list
-        destroy(actions["destroy"])
 
-        new_visible_chunk = []
-        for blk in chunk:
-            if worldgen.ifblockcanbeseen(blk, chunk):
-                new_visible_chunk.append(blk)
-        differ = worldgen.get_difference(visible_chunk, new_visible_chunk)
-        visible_chunk = new_visible_chunk
+        chunk = [block for block in chunk if not Vec3(block[0], block[1], block[2]) == actions["destroy"].position]#remove block from world list
+
+        for block in worldgen.ifblockcanbeseen(actions["destroy"].position, chunk, True):
+            if not block in visible_chunk:
+                block_ = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(block[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(block[3])]["texture"]), rotation = (-90,0,0), collider="box")
+                block_.x = block[0]
+                block_.z = block[2]
+                block_.y = block[1]
+                visible_chunk.append(block)
+        
         event_master.chunkdata = visible_chunk
-        for blk in differ[1]:
-            block = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(blk[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(blk[3])]["texture"]), rotation = (-90,0,0), collider="box")
-            block.x = blk[0]
-            block.z = blk[2]
-            block.y = blk[1]
+        
+        destroy(actions["destroy"])
+    
     if "place" in actions:
         block = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(actions["place"][1])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(actions["place"][1])]["texture"]), rotation = (-90,0,0), collider="box")
         block.position = actions["place"][0]
+        visibles = worldgen.ifblockcanbeseen(actions["place"][0], chunk, True)
         chunk.append(list(actions["place"][0])+[actions["place"][1]])
-        new_visible_chunk = []
-        for blk in chunk:
-            if worldgen.ifblockcanbeseen(blk, chunk):
-                new_visible_chunk.append(blk)
-        differ = worldgen.get_difference(visible_chunk, new_visible_chunk)
-        visible_chunk = new_visible_chunk
+        visible_chunk.append(list(actions["place"][0])+[actions["place"][1]])
+        visibles_ = worldgen.ifblockcanbeseen(actions["place"][0], chunk, True)
+    
+        differ = worldgen.get_difference(visibles, visibles_)
+        
         event_master.chunkdata = visible_chunk
         for blk in differ[0]:
+            try:
+                visible_chunk.remove(blk)
+            except ValueError:
+                pass
             for e in scene.entities:
                 if list(e.position) == blk[:3]:
                     destroy(e)
 
-
+    
 ec = EditorCamera(rotation_smoothing=10, enabled=1, rotation=(30,30,0))
 player = Player()
 
