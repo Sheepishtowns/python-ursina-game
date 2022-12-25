@@ -16,21 +16,9 @@ class WorldGenerator:
         self.loaded_chunks = []
         self.not_loaded_chunks = []
         self.loaded_blocks = []
-        self.activeperimeter = 4
         self.chunkUnit = self.chunkSize*2
         self.playerpos = (0,0)
-    """
-    def get_player_chunk(self):#gets the coords of the chunk the player is in
-        for chunk in self.loaded_chunks:
-            corner_a = chunk[0]
-            corner_b = chunk[1]
-            corner_c = chunk[0] + 2*self.chunkSize
-            corner_d = chunk[1] + 2*self.chunkSize
-            if self.playerpos[0] >= corner_a and self.playerpos[0] <= corner_c and self.playerpos[1] >= corner_b and self.playerpos[1] <= corner_d:
-                return chunk
-
-        return None
-    """
+    
     def get_player_chunk_new(self):
         x_diff = sign(self.playerpos[0]) * abs(ceil(self.playerspawn[0]) - ceil(self.playerpos[0]))
         z_diff = sign(self.playerpos[1]) * abs(ceil(self.playerspawn[1]) - ceil(self.playerpos[1]))
@@ -39,15 +27,6 @@ class WorldGenerator:
 
         return [self.playerspawn[0] + x_chunk_diff*self.chunkUnit, self.playerspawn[1] + z_chunk_diff*self.chunkUnit]
 
-    """
-    def get_chunk_pos(self, coord):
-        x_diff = sign(coord[0]) * abs(ceil(self.playerspawn[0]) - ceil(coord[0]))
-        z_diff = sign(coord[1]) * abs(ceil(self.playerspawn[1]) - ceil(coord[1]))
-        x_chunk_diff = x_diff // self.chunkUnit
-        z_chunk_diff = z_diff // self.chunkUnit
-
-        return (self.playerspawn[0] + x_chunk_diff*self.chunkUnit, self.playerspawn[1] + z_chunk_diff*self.chunkUnit)
-    """
     def trigger(self, playerpos):#playerpos is only x and z here
         unit = self.chunkUnit
         blocks2load = []
@@ -58,25 +37,31 @@ class WorldGenerator:
             z_diff = playerpos[1] - self.playerpos[1]
 
             self.playerpos = playerpos
-        
-            #gets the corner of chunks, so the for loop can select a 2 by 2 chunk of land
-            corner = self.get_player_chunk_new()
-            if x_diff > 0:
-                corner = [corner[0]+3*unit, corner[1]+unit]
-            if x_diff < 0:
-                corner = [corner[0], corner[1]+unit]
-            for i in range(0,2):
-                corner[0] = corner[0] - unit 
-                corner[1] = corner[1] - unit
+
+            #gets the origin of chunk generation
+            #┏───────┐
+            #┃       ┃
+            #┃       ┃
+            #┢───────╀───────┐
+            #┃   x   ┃       ┃
+            #┃       ┃       ┃
+            #┗───────┘───────┘
+            
+            origin = self.get_player_chunk_new()
+            origin = [origin[0]+sign(x_diff)*unit, origin[1]+sign(z_diff)*unit]
 
             blocks2load = []
 
-            for x in range(0,1):
-                for z in range(0,2):
-                    chunk2check = [corner[0] + x*unit, corner[1] + z*unit]
-                    if chunk2check not in self.loaded_chunks:
-                        blocks2load.append(self.generate_single(chunk2check, True))
-                        self.loaded_chunks.append(chunk2check)
+            if sign(x_diff) == 0 or sign(z_diff) == 0:
+                chunks2load = [[origin[0], origin[1]],[origin[0] + sign(z_diff)*unit, origin[1] + sign(x_diff)*unit],[origin[0] - sign(z_diff)*unit, origin[1] - sign(x_diff)*unit]]
+            else:
+                chunks2load = [[origin[0],origin[1]],[origin[0], origin[1] + -1*sign(z_diff)*unit], [origin[0] + -1*sign(x_diff)*unit, origin[1]]]
+
+            for item in chunks2load:
+                if item not in self.loaded_chunks:
+                    blocks2load.append(self.generate_single(item, True))
+                    self.loaded_chunks.append(item)
+            
             
         if self.initial:#initial load
             self.initial = False
@@ -86,8 +71,8 @@ class WorldGenerator:
 
             for x in range(0,radius-1,-1):#generate a 4 by 4 chunk of land
                 for z in range(0,radius-1,-1):
-                    generated = self.generate_single((playerpos[0] + x*unit,playerpos[1] + z*unit))
-                    blocks2load += generated
+                    generated = self.generate_single((playerpos[0] + x*unit,playerpos[1] + z*unit), True)
+                    blocks2load.append(generated)
                     self.world_all[str([playerpos[0] + x*unit,playerpos[1] + z*unit])] = generated
                     self.loaded_chunks.append([playerpos[0] + x*unit,playerpos[1] + z*unit])
 
@@ -96,53 +81,8 @@ class WorldGenerator:
             return blocks2load
         else:
             return None
-        
-    def background_generation_thread(self):  
-        while True:
-            start_point = self.get_player_chunk()
-            
-            for f in range(0,self.chunks2preload_radius):
-                start_point = [start_point[0]-2*16, start_point[1]+2*16]
-        #counter = 0
-
-            #for x in range(0, 2*self.chunks2preload_radius+1):
-             #   for z in range(0, 2*self.chunks2preload_radius+1):
-              #      coordofchunk = [start_point[0]+x*2*self.chunkSize, start_point[1]-z*2*self.chunkSize]
-               #     if coordofchunk not in self.not_loaded_chunks and coordofchunk not in self.loaded_chunks:
-                #        chunk = self.generate_single(coordofchunk)
-                 #       self.world_all[str(coordofchunk)] = chunk
-                  #      self.optimized_not_loaded[str(coordofchunk)] = []
-                        #for block in chunk:
-                        # print("effw") 
-                        #    if ifblockcanbeseen(block, chunk):
-                        #        self.optimized_not_loaded[str(coordofchunk)].append(block)
-                        #self.not_loaded_chunks.append(coordofchunk)
-                        #counter += 1
-        
-        #print(counter)
-
-    def slice(self, chunk):
-        x_axis_slices = {}
-        
-        for block in chunk:
-            if block[0] in x_axis_slices:
-                x_axis_slices[block[0]].append(block)
-            else:
-                x_axis_slices[block[0]] = [block]
-
-        z_axis_slices = {}
-        for block in chunk:
-            if block[2] in z_axis_slices:
-                z_axis_slices[block[2]].append(block)
-            else:
-                z_axis_slices[block[2]] = [block]
-
-        return [x_axis_slices, z_axis_slices]
 
     def generate_single(self, startpos = (0,0), getop_layer=False):
-        if list(startpos) in self.loaded_chunks:
-            return []
-
         topblocks = []
         #the top grass layer 
         for i in range(self.chunkSize**2):
@@ -175,3 +115,5 @@ class WorldGenerator:
         if getop_layer:
             return [topblocks, topblocks+dirtblocks+stoneblocks]
         return topblocks+dirtblocks+stoneblocks
+
+# ▣ 
