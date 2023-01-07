@@ -1,3 +1,6 @@
+from ursina.entity import Entity
+from ursina import color
+from ursina import destroy, scene
 def ifblockcanbeseen(coord, blocks, refresh_around = False):
     
     y_range = (coord[1], coord[1]-2)
@@ -7,6 +10,7 @@ def ifblockcanbeseen(coord, blocks, refresh_around = False):
     face_b = []
     face_c = []
     face_d = []
+    face_e = []
     
     if not refresh_around:
         for block in blocks:
@@ -29,15 +33,20 @@ def ifblockcanbeseen(coord, blocks, refresh_around = False):
             if block[1] >= y_range[1] and block[1] <= y_range[0] or block[1]-2 > y_range[1] and block[1]-2 < y_range[0]:
                 face_d.append(block)
 
-        if refresh_around and block[1] == coord[1]-2 and block[2] == coord[2] and block[0] == coord[0]:#get the block on the bottom
-            face_d.append(block)
+        if block[1] == coord[1]-2 and block[2] == coord[2] and block[0] == coord[0]:#get the block on the bottom
+            face_e.append(block)
+
+        if block[1] == coord[1]+2 and block[2] == coord[2] and block[0] == coord[0]:#get the block on the top
+            face_e.append(block)
 
     if refresh_around:
-        target_blocks = face_a + face_b + face_c + face_d
+        target_blocks = face_a + face_b + face_c + face_d + face_e
         canbeseen = []
+
         for target in target_blocks:
             if ifblockcanbeseen(target[:3], blocks):
                 canbeseen.append(target)
+       
         return canbeseen
 
     face_a_y = [axis[1] for axis in face_a]
@@ -45,26 +54,29 @@ def ifblockcanbeseen(coord, blocks, refresh_around = False):
     face_c_y = [axis[1] for axis in face_c]
     face_d_y = [axis[1] for axis in face_d]
 
+    #check if the block is completed covered by surrounding blocks
     try:
         if not max(face_a_y) >= y_range[0] or not min(face_a_y)-2 <= y_range[1]:
             return True
     except ValueError:
-        pass
+        return True
     try:
         if not max(face_b_y) >= y_range[0] or not min(face_b_y)-2 <= y_range[1]:
             return True
     except ValueError:
-        pass
+        return True
     try:
         if not max(face_c_y) >= y_range[0] or not min(face_c_y)-2 <= y_range[1]:
             return True
     except ValueError:
-        pass
+        return True
     try:
         if not max(face_d_y) >= y_range[0] or not min(face_d_y)-2 <= y_range[1]:
             return True
     except ValueError:
-        pass
+        return True
+    if len(face_e) < 2:
+        return True
     
     return False
     
