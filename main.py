@@ -1,9 +1,13 @@
 from ursina import *
+from ursina.prefabs.first_person_controller import FirstPersonController
 import json
 import os
 import utilities
 from world_gen_manager import *
 from world_event_handle import *
+import time
+
+#run with python 3.8 or above
 
 def equal_split_list(lst, n):
     lists = []
@@ -27,150 +31,83 @@ app.step()
 
 #load all the blocks from a json file
 blockdata = json.loads(open("data/blocks.json","r").read())
-world = WorldGenerator(100)
+world = WorldGenerator(100, blockdata)
 playerspawn = (0,0)
-chunk = []
-world_gen = world.trigger(playerspawn)
-
-visible_chunk = []
-for item in world_gen:
-    for block_ in item[0]:
-        visible_chunk.append(block_)
-        block = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(block_[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(block_[3])]["texture"]), rotation = (-90,0,0), collider="box")
-        block.x = block_[0]
-        block.z = block_[2]
-        block.y = block_[1]
-    chunk += item[1]
+#chunk = []
+visible_chunk = world.trigger(playerspawn)[0]
+visible_chunk_entities = []#store all the entity objects for easy access
 
 
 #get rid of load screen after world has initially loaded
 destroy(box)
 destroy(text1)
 
-class Player(Entity):
+class Player(FirstPersonController):
     def __init__(self):
         super().__init__()
-        self.model = "model/player.obj"
-        self.texture = "texture/player.png"
-        self.position = (playerspawn[0],6,playerspawn[1])
-        self.scale = (0.4,0.4,0.4)
-        self.collider = "box"#BoxCollider(self,(0,1.3,1),Vec3(self.model_bounds[0], self.model_bounds[1], self.model_bounds[2]-0.1))
-        self.jump_energy = 0
-        self.init_jump_energy = 2.2
-
-    def update(self):
-        if self.jump_energy > 0: 
-            self.y += self.jump_energy*0.1
-            if self.jump_energy > 0.1:
-                self.jump_energy -= 0.1
-            else:
-                self.jump_energy = 0
-    
-        if not self.intersects().entities and not self.jump_energy > 0:#gravity
-            self.y -= 0.2
-            for object_ in self.intersects().entities:
-                self.y = object_.y + 2.2
-
+        self.model = "model\player.obj"
+        self.texture = "texture\player.png"
+        self.scale = (0.5,0.7,0.5)
+        self.speed = 4
+        self.height = 3
     def getxz(self):
-        return (self.position.x, self.position.z)
+        return (self.position[0], self.position[2])
+    def switch(self):
+        mouse.locked = not mouse.locked
+        self.cursor.enabled = not self.cursor.enabled
 
-    def input(self,key):
-        if key == 'tab':    # press tab to toggle edit/play mode
-            ec.enabled = not ec.enabled
-
-        if held_keys["w"]:
-            self.x += 0.08
-            for object_ in self.intersects().entities:
-                if object_.y > round(self.y) - 2:#check if the block is higher than the self's current y level
-                    #print(object_.y)
-                    self.x -= 0.08
-        elif held_keys["s"]:
-            self.x -= 0.08
-            for object_ in self.intersects().entities:
-                if object_.y > round(self.y) - 2:#check if the block is higher than the self's current y level
-                    #print(object_.y)
-                    self.x += 0.08
-        elif held_keys["a"]:
-            self.z += 0.08
-            for object_ in self.intersects().entities:
-                if object_.y > round(self.y) - 2:#check if the block is higher than the self's current y level
-                    #print(object_.y)
-                    self.z -= 0.08
-        elif held_keys["d"]:
-            self.z -= 0.08
-            for object_ in self.intersects().entities:
-                if object_.y > round(self.y) - 2:#check if the block is higher than the self's current y level
-                    #print(object_.y)
-                    self.z += 0.08
-
-        if held_keys["space"]:
-            if self.intersects().entities:
-                self.jump_energy = self.init_jump_energy
+ec = EditorCamera(enabled=0)
 
 player = Player()
+player.position = Vec3(playerspawn[0], 8, playerspawn[1])
 
 event_master = EventsMaster(blockdata, visible_chunk)
 indicator = None
-blocks2load_queued = []
+
 def update():
-    blocks2load = world.trigger(player.getxz())
+    blocks2load, blocks2unload = world.trigger(player.getxz())
     
     global indicator
     destroy(indicator)
 
-    global chunk, visible_chunk, blocks2load_queued
+    global chunk, visible_chunk
     
     if blocks2load:
         for item in blocks2load:
-            chunk += item[1]
-            partials = equal_split_list(item[0], 8)
-            blocks2load_queued += partials[1:]
-            for block in partials[0]:
-                block_ = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(block[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(block[3])]["texture"]), rotation = (-90,0,0), collider="box")
-                block_.x = block[0]
-                block_.z = block[2]
-                block_.y = block[1]
-                visible_chunk.append(block)
-    if blocks2load_queued:
-        for block in blocks2load_queued[0]:
-            block_ = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(block[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(block[3])]["texture"]), rotation = (-90,0,0), collider="box")
-            block_.x = block[0]
-            block_.z = block[2]
-            block_.y = block[1]
-            visible_chunk.append(block)
-        blocks2load_queued.pop(0)
-            
-    
+            visible_chunk.append(item)
+    if blocks2unload:
+        visible_chunk = [block for block in visible_chunk if block not in blocks2unload]
+                
     actions = event_master.trigger(mouse)
     if "breaking" in actions:#apply the breaking animation on blocks
         indicator = Entity(name = "break-indicate", model = os.path.join("model/", blockdata["specialblocks"]["break-indicate"]["model"]), texture = os.path.join("texture/", blockdata["specialblocks"]["break-indicate"]["animation"], "/breaking-"+str(actions["breaking"][1])+".png"), rotation = (-90,0,0), position = actions["breaking"][0], scale = blockdata["specialblocks"]["break-indicate"]["scale"])
 
     if "destroy" in actions:
-        chunk = [block for block in chunk if not Vec3(block[0], block[1], block[2]) == actions["destroy"].position]#remove block from world list
-
-        for block in utilities.ifblockcanbeseen(actions["destroy"].position, chunk, True):
+        block_rep = world.block_update("", actions["destroy"], "destroy")
+        for block in utilities.ifblockcanbeseen(actions["destroy"].position, world.all_nolabel, True):
             if not block in visible_chunk:
                 block_ = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(block[3])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(block[3])]["texture"]), rotation = (-90,0,0), collider="box")
                 block_.x = block[0]
                 block_.z = block[2]
                 block_.y = block[1]
+                #print(block)
+                world.block_update("", block_, "newentity")
                 visible_chunk.append(block)
         
+        visible_chunk.remove(block_rep)
         event_master.chunkdata = visible_chunk
-        
         destroy(actions["destroy"])
     
     if "place" in actions:
         block = Entity(model = os.path.join("model/", blockdata["fullblocks"][str(actions["place"][1])]["model"]), texture = os.path.join("texture/", blockdata["fullblocks"][str(actions["place"][1])]["texture"]), rotation = (-90,0,0), collider="box")
         block.position = actions["place"][0]
-        visibles = utilities.ifblockcanbeseen(actions["place"][0], chunk, True)
-        chunk.append(list(actions["place"][0])+[actions["place"][1]])
+        world.block_update(list(actions["place"][0]) + [actions["place"][1]], block, "create")
+        visibles = utilities.ifblockcanbeseen(actions["place"][0], world.all_nolabel, True)
         visible_chunk.append(list(actions["place"][0])+[actions["place"][1]])
-        visibles_ = utilities.ifblockcanbeseen(actions["place"][0], chunk, True)
-    
+        visibles_ = utilities.ifblockcanbeseen(actions["place"][0], world.all_nolabel, True)
+
         differ = utilities.get_difference(visibles, visibles_)
         
-        event_master.chunkdata = visible_chunk
         for blk in differ[0]:
             try:
                 visible_chunk.remove(blk)
@@ -179,8 +116,15 @@ def update():
             for e in scene.entities:
                 if list(e.position) == blk[:3]:
                     destroy(e)
+        event_master.chunkdata = visible_chunk
 
-    
-ec = EditorCamera(rotation_smoothing=10, enabled=1, rotation=(30,30,0))
+def input(key):
+    if key == 'tab':    # press tab to toggle edit/play mode
+        ec.enabled = not ec.enabled
+        player.switch()
+        if ec.enabled:
+            event_master.disable_event("block_place")
+        else:
+            event_master.enable_event("block_place")
 
 app.run()

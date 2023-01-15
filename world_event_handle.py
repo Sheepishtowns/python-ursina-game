@@ -9,6 +9,7 @@ class EventsMaster:
         self.cooldown_records = {}
         self.blockdata = blockdata
         self.chunkdata = chunkdata
+        self.disabled = []
 
     def timer_check(self, event):
         now = round(time.time()*1000)
@@ -23,12 +24,21 @@ class EventsMaster:
             self.cooldown_records[event] = now
             return True
 
+    def disable_event(self, event):
+        if event in self.registered_events:
+            self.disabled.append(event)
+
+    def enable_event(self, event):
+        if event in self.disabled:
+            self.disabled.remove(event)
+
     def trigger(self, mouse):
         self.mouse = mouse
 
         for event in self.registered_events:
-            event_func = getattr(self, event)
-            event_func()
+            if event not in self.disabled:
+                event_func = getattr(self, event)
+                event_func()
 
         actions = self.process()
         return actions
